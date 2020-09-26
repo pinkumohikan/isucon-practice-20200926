@@ -67,4 +67,6 @@ type LogPayload struct {
 	Tag string
 	Value interface{}
 }
-var SendLogChan = make(chan LogPayload, 9999)
+
+// TODO: bulkにしたらサイズ増やす
+var SendLogChan = make(chan LogPayload, 50)
