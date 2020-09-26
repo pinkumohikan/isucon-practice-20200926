@@ -34,13 +34,13 @@ var lowestSellOrder *model.Order
 var highestSellOrder *model.Order
 
 var banList map[string]int
-var banMutex *sync.Mutex
+var banMutex *sync.RWMutex
 
 func checkBan(bankID string) bool {
 	if banList == nil {
 	}
-	banMutex.Lock()
-	defer banMutex.Unlock()
+	banMutex.RLock()
+	defer banMutex.RUnlock()
 	return banList[bankID] >= 5
 }
 
@@ -60,7 +60,7 @@ func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	banList = make(map[string]int)
-	banMutex = &sync.Mutex{}
+	banMutex = &sync.RWMutex{}
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	h := &Handler{
 		db:    db,
@@ -72,7 +72,7 @@ func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 
 func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	banList = make(map[string]int)
-	banMutex = &sync.Mutex{}
+	banMutex = &sync.RWMutex{}
 	model.InitializeCandleStack(&BaseTime)
 	infoUpdateMutex.Lock()
 	defer infoUpdateMutex.Unlock()
