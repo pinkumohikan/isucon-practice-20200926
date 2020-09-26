@@ -67,4 +67,4 @@ type LogPayload struct {
 	Tag string
 	Value interface{}
 }
-var SendLogChan = make(chan LogPayload)
+var SendLogChan = make(chan LogPayload, 9999)
