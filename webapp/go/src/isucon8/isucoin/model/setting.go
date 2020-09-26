@@ -57,10 +57,10 @@ func Logger(d QueryExecutor) (*isulogger.Isulogger, error) {
 }
 
 func sendLog(d QueryExecutor, tag string, v interface{}) {
-	SendLogChan <- LogPayload{
+	BufferedLogs = append(BufferedLogs, LogPayload{
 		Tag:   tag,
 		Value: v,
-	}
+	})
 }
 
 type LogPayload struct {
@@ -68,5 +68,4 @@ type LogPayload struct {
 	Value interface{}
 }
 
-// TODO: bulkにしたらサイズ増やす
-var SendLogChan = make(chan LogPayload, 50)
+var BufferedLogs []LogPayload
