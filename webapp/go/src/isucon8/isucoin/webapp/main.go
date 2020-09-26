@@ -62,7 +62,9 @@ func main() {
 	go func () {
 		t := time.NewTicker(time.Millisecond * 500)
 		for _ = range t.C {
+			log.Println(len(model.BufferedLogs))
 			if len(model.BufferedLogs) > 0 {
+				log.Println("ログをまとめて送るぞー")
 				logger, err := model.Logger(db)
 				if err != nil {
 					log.Printf("Log sending error. err=%s", err)
