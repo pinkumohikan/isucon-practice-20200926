@@ -107,7 +107,7 @@ func GetCandlestickDataMin(t time.Time) []*CandlestickData {
 	return getCandlestickData(candlestickDataMin, t.Unix())
 }
 
-func GetCandlestick1Hour(t time.Time) []*CandlestickData {
+func GetCandlestickDataHour(t time.Time) []*CandlestickData {
 	return getCandlestickData(candlestickDataHour, t.Unix())
 }
 
