@@ -1,13 +1,13 @@
 version: '2'
 services:
-  nginx:
-    image: nginx:1.15.3-alpine
-    volumes:
-      - ./nginx:/etc/nginx
-    ports:
-      - "80:80"
-    links:
-      - isucoin
+        #nginx:
+        #image: nginx:1.15.3-alpine
+        #volumes:
+        #- ./nginx:/etc/nginx
+        #ports:
+        # - "80:80"
+        #links:
+        #- isucoin
 
   isucoin:
     environment:
