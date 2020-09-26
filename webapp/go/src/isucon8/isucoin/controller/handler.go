@@ -210,6 +210,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	res["cursor"] = latestTrade.ID
 	user, _ := h.userByRequest(r)
 	if user != nil {
+		fmt.Println(user)
 		orders, err := model.GetOrdersByUserIDAndLastTradeId(h.db, user.ID, lastTradeID)
 		if err != nil {
 			h.handleError(w, err, 500)
@@ -220,12 +221,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 			h.handleError(w, err, 500)
 			return
 		}
-		fmt.Println(orders[0])
-		fmt.Println(orders[0].TradeID)
-		fmt.Println(orders[0].Trade)
-		fmt.Println(orders[0].UserID)
-		fmt.Println(orders[0].User)
-
+		fmt.Println(orders)
 		res["traded_orders"] = orders
 	}
 
