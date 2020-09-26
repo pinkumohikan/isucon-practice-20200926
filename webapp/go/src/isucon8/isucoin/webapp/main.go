@@ -50,7 +50,7 @@ func main() {
 		dbusrpass += ":" + dbpass
 	}
 
-	dsn := fmt.Sprintf(`%s@tcp(%s:%s)/%s?parseTime=true&loc=Local&charset=utf8mb4`, dbusrpass, dbhost, dbport, dbname)
+	dsn := fmt.Sprintf(`%s@tcp(%s:%s)/%s?parseTime=true&loc=Local&charset=utf8mb4&interpolateParams=true`, dbusrpass, dbhost, dbport, dbname)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatalf("mysql connect failed. err: %s", err)
