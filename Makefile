@@ -13,13 +13,15 @@ distribution-app:
 stop-services:
 	sudo systemctl stop varnish
 	sudo systemctl stop nginx
-	ssh isucon-app2 sudo systemctl stop isucoin.go
+	# ssh isucon-app2 sudo systemctl stop isucoin.go
+	sudo systemctl stop isucoin.go
 	ssh isucon-app3 sudo systemctl stop isucoin.go
 	ssh isucon-app4 sudo systemctl stop mysql
 
 start-services:
 	ssh isucon-app4 sudo systemctl start mysql
-	ssh isucon-app2 sudo systemctl start isucoin.go
+	#ssh isucon-app2 sudo systemctl start isucoin.go
+	sudo systemctl start isucoin.go
 	ssh isucon-app3 sudo systemctl start isucoin.go
 	sudo systemctl start nginx
 	sudo systemctl start varnish
