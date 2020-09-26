@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"isucon8/isucoin/model"
@@ -27,20 +29,26 @@ type Handler struct {
 	store sessions.Store
 }
 
+var infoUpdateMutex *sync.RWMutex
+
 func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	model.InitializeCandleStack(&BaseTime)
-	_ = model.UpdateCandlestickData(db)
-	return &Handler{
+	h := &Handler{
 		db:    db,
 		store: store,
 	}
+	infoUpdateMutex = &sync.RWMutex{}
+	go InfoUpdate()
+	return h
 }
 
 func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	model.InitializeCandleStack(&BaseTime)
+	infoUpdateMutex.Lock()
+	defer infoUpdateMutex.Unlock()
 	err := h.txScope(func(tx *sql.Tx) error {
 		if err := model.InitBenchmark(tx); err != nil {
 			return err
@@ -174,6 +182,9 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		res["traded_orders"] = orders
 	}
 
+	infoUpdateMutex.Lock()
+	defer infoUpdateMutex.Unlock()
+	
 	bySecTime := BaseTime.Add(-300 * time.Second)
 	if lt.After(bySecTime) {
 		bySecTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), lt.Second(), 0, lt.Location())
@@ -381,4 +392,20 @@ func (h *Handler) txScope(f func(*sql.Tx) error) (err error) {
 	}()
 	err = f(tx)
 	return
+}
+
+func InfoUpdate() {
+	t := time.NewTicker(250*time.Microsecond)
+	for {
+		select {
+			case <-t.C:
+				func() {
+					infoUpdateMutex.Lock()
+					defer infoUpdateMutex.Unlock()
+					if err := model.UpdateCandlestickData(h.db); err != nil {
+						fmt.Errorf("%s\n", err)
+					}
+				}()
+		}
+	}
 }
