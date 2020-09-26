@@ -27,6 +27,16 @@ type CandlestickData struct {
 	Low   int64     `json:"low"`
 }
 
+var candlestickDataSec []*CandlestickData
+var candlestickDataMin []*CandlestickData
+var candlestickDataHour []*CandlestickData
+
+func InitializeCandleStack() {
+	candlestickDataSec = make([]*CandlestickData, 0, 1000)
+	candlestickDataMin = make([]*CandlestickData, 0, 1000)
+	candlestickDataHour = make([]*CandlestickData, 0, 1000)
+}
+
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
 	return scanTrade(d.Query("SELECT * FROM trade WHERE id = ?", id))
 }
