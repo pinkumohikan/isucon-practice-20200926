@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"isucon8/isubank"
 	"log"
 	"strings"
@@ -34,6 +35,7 @@ var candlestickDataLastIndex int64
 var candlestickDataBaseTime *time.Time
 
 func GetTradeByIDs(d QueryExecutor, ids []string) ([]*Trade, error) {
+	fmt.Println(len(ids))
 	return scanTrades(d.Query("SELECT * FROM trade WHERE id IN (?)", strings.Join(ids, ",")))
 }
 

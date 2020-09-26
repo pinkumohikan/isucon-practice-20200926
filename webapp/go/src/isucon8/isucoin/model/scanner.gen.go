@@ -120,7 +120,6 @@ func scanTrades(rows *sql.Rows, e error) (trades []*Trade, err error) {
 			return
 		}
 		trades = append(trades, &v)
-		fmt.Println("2")
 	}
 	err = rows.Err()
 	return
