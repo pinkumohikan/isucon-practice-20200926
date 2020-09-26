@@ -73,7 +73,7 @@ func pushCandlestick(data *[]*CandlestickData, ut int64, price int64) {
 
 func UpdateCandlestickData(d QueryExecutor) error {
 	query := `
-			SELECT id, UNIX_TIMESTAMP(STR_TO_DATE(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s'), '%Y-%m-%d %H:%i:%s')) as t, price,
+			SELECT id, UNIX_TIMESTAMP(STR_TO_DATE(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s'), '%Y-%m-%d %H:%i:%s')) as t, price
 			FROM trade
 			WHERE created_at >= ? AND id > ?
 			ORDER BY id
