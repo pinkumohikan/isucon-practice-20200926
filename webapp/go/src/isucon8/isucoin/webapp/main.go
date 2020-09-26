@@ -62,8 +62,10 @@ func main() {
 	go func () {
 		t := time.NewTicker(time.Millisecond * 500)
 		for _ = range t.C {
-			log.Println(len(model.BufferedLogs))
 			if len(model.BufferedLogs) > 0 {
+				model.BufferedLogsMutex.Lock()
+				defer model.BufferedLogsMutex.Unlock()
+
 				log.Println("ログをまとめて送るぞー")
 				logger, err := model.Logger(db)
 				if err != nil {
