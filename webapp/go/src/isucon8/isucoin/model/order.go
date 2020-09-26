@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql"
 	"isucon8/isubank"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -66,12 +67,30 @@ func GetHighestBuyOrder(d QueryExecutor) (*Order, error) {
 	return scanOrder(d.Query("SELECT * FROM orders WHERE type = ? AND closed_at IS NULL ORDER BY price DESC, created_at ASC LIMIT 1", OrderTypeBuy))
 }
 
+func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
+	ids := getUniqueIds(orders)
+	var uTrades map[int64]*Trade
+	if len(ids) > 0 {
+		trades, err := GetTradeByIDs(d, ids)
+		if err != nil {
+			return errors.Wrapf(err, "GetTradeByID failed. id")
+		}
+		uTrades = make(map[int64]*Trade, len(trades))
+		for _, t := range trades {
+			uTrades[t.ID] = t
+		}
+		for _, o := range orders {
+			if uTrades[o.TradeID] != nil {
+				o.Trade = uTrades[o.TradeID]
+			}
+		}
+	}
+
+	return nil
+}
+
 func FetchOrderRelation(d QueryExecutor, order *Order) error {
 	var err error
-	order.User, err = GetUserByID(d, order.UserID)
-	if err != nil {
-		return errors.Wrapf(err, "GetUserByID failed. id")
-	}
 	if order.TradeID > 0 {
 		order.Trade, err = GetTradeByID(d, order.TradeID)
 		if err != nil {
@@ -79,6 +98,20 @@ func FetchOrderRelation(d QueryExecutor, order *Order) error {
 		}
 	}
 	return nil
+}
+
+func getUniqueIds(items []*Order) []string {
+	idUnique := make(map[int64]struct{})
+	var ids []string
+
+	for _, i := range items {
+		id := i.TradeID
+		if _, ok := idUnique[id]; !ok {
+			ids = append(ids, strconv.FormatInt(id, 10))
+			idUnique[id] = struct{}{}
+		}
+	}
+	return ids
 }
 
 func AddOrder(tx *sql.Tx, ot string, userID, amount, price int64) (*Order, error) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"isucon8/isubank"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,6 +32,10 @@ var candlestickDataMin []*CandlestickData
 var candlestickDataHour []*CandlestickData
 var candlestickDataLastIndex int64
 var candlestickDataBaseTime *time.Time
+
+func GetTradeByIDs(d QueryExecutor, ids []string) ([]*Trade, error) {
+	return scanTrades(d.Query("SELECT * FROM trade WHERE id IN (?)", strings.Join(ids, ",")))
+}
 
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
 	return scanTrade(d.Query("SELECT * FROM trade WHERE id = ?", id))
