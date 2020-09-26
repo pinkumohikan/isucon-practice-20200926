@@ -27,13 +27,14 @@ var BaseTime time.Time
 type Handler struct {
 	db    *sql.DB
 	store sessions.Store
+	tradeChanceChan chan bool
 }
 
 var infoUpdateMutex *sync.RWMutex
 var lowestSellOrder *model.Order
 var highestSellOrder *model.Order
 
-func NewHandler(db *sql.DB, store sessions.Store) *Handler {
+func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
@@ -41,6 +42,7 @@ func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	h := &Handler{
 		db:    db,
 		store: store,
+		tradeChanceChan: tradeChanceChan,
 	}
 	infoUpdateMutex = &sync.RWMutex{}
 	go h.InfoUpdate()
@@ -244,10 +246,7 @@ func (h *Handler) AddOrders(w http.ResponseWriter, r *http.Request, _ httprouter
 			return
 		}
 		if tradeChance {
-			if err := model.RunTrade(h.db); err != nil {
-				// トレードに失敗してもエラーにはしない
-				log.Printf("runTrade err:%s", err)
-			}
+			h.tradeChanceChan <- true
 		}
 		h.handleSuccess(w, map[string]interface{}{
 			"id": order.ID,
