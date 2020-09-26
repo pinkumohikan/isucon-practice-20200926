@@ -60,6 +60,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("mysql connect failed. err: %s", err)
 	}
+	db.SetMaxIdleConns(30)
+	db.SetMaxOpenConns(30)
+
 	store := sessions.NewCookieStore([]byte(SessionSecret))
 
 	go func () {
