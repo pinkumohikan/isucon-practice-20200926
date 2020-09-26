@@ -27,21 +27,19 @@ var BaseTime time.Time
 type Handler struct {
 	db    *sql.DB
 	store sessions.Store
-	tradeChanceChan chan bool
 }
 
 var infoUpdateMutex *sync.RWMutex
 var lowestSellOrder *model.Order
 var highestSellOrder *model.Order
 
-func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
+func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	h := &Handler{
 		db:    db,
 		store: store,
-		tradeChanceChan: tradeChanceChan,
 	}
 	infoUpdateMutex = &sync.RWMutex{}
 	return h
@@ -205,8 +203,6 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 	res["chart_by_hour"] = model.GetCandlestickDataHour(byHourTime)
 
-	lowestSellOrder, err := model.GetLowestSellOrder(h.db)
-
 	if lowestSellOrder != nil {
 		res["lowest_sell_price"] = lowestSellOrder.Price
 	}
@@ -238,14 +234,6 @@ func (h *Handler) AddOrders(w http.ResponseWriter, r *http.Request, _ httprouter
 	case err != nil:
 		h.handleError(w, err, 500)
 	default:
-		tradeChance, err := model.HasTradeChanceByOrder(h.db, order.ID)
-		if err != nil {
-			h.handleError(w, err, 500)
-			return
-		}
-		if tradeChance {
-			h.tradeChanceChan <- true
-		}
 		h.handleSuccess(w, map[string]interface{}{
 			"id": order.ID,
 		})
