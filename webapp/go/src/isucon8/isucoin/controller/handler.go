@@ -185,8 +185,8 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		res["traded_orders"] = orders
 	}
 
-	infoUpdateMutex.Lock()
-	defer infoUpdateMutex.Unlock()
+	infoUpdateMutex.RLock()
+	defer infoUpdateMutex.RUnlock()
 
 	bySecTime := BaseTime.Add(-300 * time.Second)
 	if lt.After(bySecTime) {
