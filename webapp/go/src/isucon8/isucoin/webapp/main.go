@@ -64,12 +64,13 @@ func main() {
 		for _ = range t.C {
 			if len(model.BufferedLogs) > 0 {
 				model.BufferedLogsMutex.Lock()
-				defer model.BufferedLogsMutex.Unlock()
+				model.BufferedLogsMutex.Unlock()
 
 				log.Println("ログをまとめて送るぞー")
 				logger, err := model.Logger(db)
 				if err != nil {
 					log.Printf("Log sending error. err=%s", err)
+					model.BufferedLogsMutex.Unlock()
 					return
 				}
 
@@ -83,9 +84,12 @@ func main() {
 				}
 				err = logger.SendBulk(logs)
 				if err != nil {
+					model.BufferedLogsMutex.Unlock()
 					log.Printf("Log sending error. err=%s", err)
 				}
+
 				model.BufferedLogs = nil
+				model.BufferedLogsMutex.Unlock()
 			}
 		}
 	}()
