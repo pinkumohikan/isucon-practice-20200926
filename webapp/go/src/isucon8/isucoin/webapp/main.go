@@ -7,6 +7,7 @@ import (
 	"isucon8/isucoin/model"
 	"isucon8/isulogger"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -37,6 +38,8 @@ func getEnv(key, def string) string {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	var (
 		port   = getEnv("APP_PORT", "5000")
 		dbhost = getEnv("DB_HOST", "127.0.0.1")
