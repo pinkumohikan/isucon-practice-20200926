@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
@@ -215,8 +214,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		res["highest_buy_price"] = highestSellOrder.Price
 	}
 
-	// MEMO: trueにするとシェアボタンが有効になるが、アクセスが増えてヤバイ
-	res["enable_share"] = rand.Intn(7) == 0
+	res["enable_share"] = true
 
 	h.handleSuccess(w, res)
 }
