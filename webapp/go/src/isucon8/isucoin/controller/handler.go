@@ -38,6 +38,7 @@ var banMutex *sync.RWMutex
 
 func checkBan(bankID string) bool {
 	if banList == nil {
+		return false
 	}
 	banMutex.RLock()
 	defer banMutex.RUnlock()
