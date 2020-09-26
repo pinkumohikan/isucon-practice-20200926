@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"isucon8/isubank"
 	"isucon8/isulogger"
+	"sync"
 )
 
 const (
@@ -57,10 +58,12 @@ func Logger(d QueryExecutor) (*isulogger.Isulogger, error) {
 }
 
 func sendLog(d QueryExecutor, tag string, v interface{}) {
-	SendLogChan <- LogPayload{
+	BufferedLogsMutex.Lock()
+	BufferedLogs = append(BufferedLogs, LogPayload{
 		Tag:   tag,
 		Value: v,
-	}
+	})
+	BufferedLogsMutex.Unlock()
 }
 
 type LogPayload struct {
@@ -68,5 +71,5 @@ type LogPayload struct {
 	Value interface{}
 }
 
-// TODO: bulkにしたらサイズ増やす
-var SendLogChan = make(chan LogPayload, 50)
+var BufferedLogs []LogPayload
+var BufferedLogsMutex sync.RWMutex

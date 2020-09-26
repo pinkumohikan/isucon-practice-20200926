@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"isucon8/isucoin/controller"
 	"isucon8/isucoin/model"
+	"isucon8/isulogger"
 	"log"
 	"net/http"
 	"os"
@@ -58,32 +59,38 @@ func main() {
 	}
 	store := sessions.NewCookieStore([]byte(SessionSecret))
 
-	const LogSendInterval = 1000 / 20
-	go func (logs <- chan model.LogPayload) {
-		for l := range logs {
-			s := time.Now().UnixNano() / 1000
+	go func () {
+		t := time.NewTicker(time.Millisecond * 1000)
+		for _ = range t.C {
+			if len(model.BufferedLogs) > 0 {
+				logger, err := model.Logger(db)
+				if err != nil {
+					log.Printf("Log sending error. err=%s", err)
+					return
+				}
 
-			logger, err := model.Logger(db)
-			if err != nil {
-				log.Printf("[WARN] new logger failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
-				return
-			}
-			err = logger.Send(l.Tag, l.Value)
-			if err != nil {
-				log.Printf("[WARN] logger send failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
-			}
+				model.BufferedLogsMutex.Lock()
+				log.Printf("ログを %d件 まとめて送信中...", len(model.BufferedLogs))
+				var logs []isulogger.Log
+				for _, l := range model.BufferedLogs {
+					logs = append(logs, isulogger.Log{
+						Tag:  l.Tag,
+						Time: time.Now(),
+						Data: l.Value,
+					})
+				}
+				model.BufferedLogs = nil
+				model.BufferedLogsMutex.Unlock()
 
-			e := time.Now().UnixNano() / 1000
-			elapsed := e - s
-			interval := LogSendInterval - elapsed
-			if interval > 0 {
-				time.Sleep(LogSendInterval * time.Millisecond)
+				if err := logger.SendBulk(logs); err != nil {
+					log.Printf("Log sending error. err=%s", err)
+				}
 			}
 		}
-	}(model.SendLogChan)
+	}()
+
 	tradeChanceChan := make(chan bool, 9999)
 	const TradeInterval = 10 * time.Millisecond
-
 	go func (chances <-chan bool) {
 		for _ = range chances {
 			if err := model.RunTrade(db); err != nil {
