@@ -81,7 +81,7 @@ func main() {
 			}
 		}
 	}(model.SendLogChan)
-	tradeChanceChan := make(chan bool)
+	tradeChanceChan := make(chan bool, 9999)
 	const TradeInterval = 10 * time.Millisecond
 
 	go func (chances <-chan bool) {
