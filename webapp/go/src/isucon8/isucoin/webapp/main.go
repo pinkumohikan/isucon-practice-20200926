@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"isucon8/isucoin/controller"
+	"isucon8/isucoin/model"
 	"log"
 	"net/http"
 	"os"
@@ -56,6 +57,22 @@ func main() {
 		log.Fatalf("mysql connect failed. err: %s", err)
 	}
 	store := sessions.NewCookieStore([]byte(SessionSecret))
+
+	const LogSendInterval = 1000 / 20 * time.Millisecond
+	go func (logs <- chan model.LogPayload) {
+		for l := range logs {
+			logger, err := model.Logger(db)
+			if err != nil {
+				log.Printf("[WARN] new logger failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
+				return
+			}
+			err = logger.Send(l.Tag, l.Value)
+			if err != nil {
+				log.Printf("[WARN] logger send failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
+			}
+			time.Sleep(LogSendInterval)
+		}
+	}(model.SendLogChan)
 
 	h := controller.NewHandler(db, store)
 
