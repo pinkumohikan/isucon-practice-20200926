@@ -19,7 +19,7 @@ start-services:
 	ssh isucon-app4 sudo systemctl start mysql
 	ssh isucon-app2 sudo systemctl start isucoin.go
 	sudo systemctl start nginx
-	suto systemctl start varnish
+	sudo systemctl start varnish
 
 truncate-logs:
 	sudo truncate --size 0 /var/log/nginx/access.log
