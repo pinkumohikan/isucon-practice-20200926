@@ -1,11 +1,9 @@
 package model
 
 import (
+	"github.com/pkg/errors"
 	"isucon8/isubank"
 	"isucon8/isulogger"
-	"log"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -59,13 +57,16 @@ func Logger(d QueryExecutor) (*isulogger.Isulogger, error) {
 }
 
 func sendLog(d QueryExecutor, tag string, v interface{}) {
-	logger, err := Logger(d)
-	if err != nil {
-		log.Printf("[WARN] new logger failed. tag: %s, v: %v, err:%s", tag, v, err)
-		return
-	}
-	err = logger.Send(tag, v)
-	if err != nil {
-		log.Printf("[WARN] logger send failed. tag: %s, v: %v, err:%s", tag, v, err)
+	SendLogChan <- LogPayload{
+		Tag:   tag,
+		Value: v,
 	}
 }
+
+type LogPayload struct {
+	Tag string
+	Value interface{}
+}
+
+// TODO: bulkにしたらサイズ増やす
+var SendLogChan = make(chan LogPayload, 50)
