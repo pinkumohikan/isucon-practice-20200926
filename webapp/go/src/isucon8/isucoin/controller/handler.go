@@ -216,7 +216,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 
 	// MEMO: trueにするとシェアボタンが有効になるが、アクセスが増えてヤバイ
-	res["enable_share"] = rand.Intn(5) == 0
+	res["enable_share"] = rand.Intn(7) == 0
 
 	h.handleSuccess(w, res)
 }
