@@ -220,6 +220,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 			h.handleError(w, err, 500)
 			return
 		}
+		fmt.Println(orders)
 
 		res["traded_orders"] = orders
 	}
