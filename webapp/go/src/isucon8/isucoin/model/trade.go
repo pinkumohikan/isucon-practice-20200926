@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
 	"isucon8/isubank"
 	"log"
 	"time"
@@ -32,6 +31,14 @@ var candlestickDataMin []*CandlestickData
 var candlestickDataHour []*CandlestickData
 var candlestickDataLastIndex int64
 var candlestickDataBaseTime *time.Time
+
+func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
+	return scanTrade(d.Query("SELECT * FROM trade WHERE id = ?", id))
+}
+
+func GetLatestTrade(d QueryExecutor) (*Trade, error) {
+	return scanTrade(d.Query("SELECT * FROM trade ORDER BY id DESC LIMIT 1"))
+}
 
 func InitializeCandleStack(baseTime *time.Time) {
 	candlestickDataSec = make([]*CandlestickData, 0, 1000)
@@ -92,33 +99,37 @@ func UpdateCandlestickData(d QueryExecutor) error {
 	return nil
 }
 
-func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
-	return scanTrade(d.Query("SELECT * FROM trade WHERE id = ?", id))
+func GetCandlestickDataSec(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataSec, t.Unix())
 }
 
-func GetLatestTrade(d QueryExecutor) (*Trade, error) {
-	return scanTrade(d.Query("SELECT * FROM trade ORDER BY id DESC LIMIT 1"))
+func GetCandlestickDataMin(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataMin, t.Unix())
+}
+
+func GetCandlestick1Hour(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataHour, t.Unix())
+}
+
+func getCandlestickData(data []*CandlestickData, ut int64) []*CandlestickData {
+	low := 0
+	high := len(data)
+	for low+1 < high {
+		mid := (low + high) / 2
+		if data[mid].Time.Unix() < ut {
+			low = mid
+		} else {
+			high = mid
+		}
+	}
+	return append(make([]*CandlestickData, 0), data[low:]...)
 }
 
 func GetCandlestickData(d QueryExecutor, mt time.Time, tf string) ([]*CandlestickData, error) {
-	query := fmt.Sprintf(`
-		SELECT m.t, a.price, b.price, m.h, m.l
-		FROM (
-			SELECT
-				STR_TO_DATE(DATE_FORMAT(created_at, '%s'), '%s') AS t,
-				MIN(id) AS min_id,
-				MAX(id) AS max_id,
-				MAX(price) AS h,
-				MIN(price) AS l
-			FROM trade
-			WHERE created_at >= ?
-			GROUP BY t
-		) m
-		JOIN trade a ON a.id = m.min_id
-		JOIN trade b ON b.id = m.max_id
-		ORDER BY m.t
-	`, tf, "%Y-%m-%d %H:%i:%s")
-	return scanCandlestickDatas(d.Query(query, mt))
+	if err := UpdateCandlestickData(d); err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 func HasTradeChanceByOrder(d QueryExecutor, orderID int64) (bool, error) {
