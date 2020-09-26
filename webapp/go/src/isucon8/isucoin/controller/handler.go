@@ -41,7 +41,7 @@ func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 		store: store,
 	}
 	infoUpdateMutex = &sync.RWMutex{}
-	go InfoUpdate()
+	go h.InfoUpdate()
 	return h
 }
 
