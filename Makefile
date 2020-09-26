@@ -10,6 +10,7 @@ distribution-app:
 	scp webapp/go/isucoin isucon-app2:/home/ubuntu/isucon8-final/webapp/go/
 
 stop-services:
+	sudo systemctl stop varnish
 	sudo systemctl stop nginx
 	ssh isucon-app2 sudo systemctl stop isucoin.go
 	ssh isucon-app4 sudo systemctl stop mysql
@@ -18,6 +19,7 @@ start-services:
 	ssh isucon-app4 sudo systemctl start mysql
 	ssh isucon-app2 sudo systemctl start isucoin.go
 	sudo systemctl start nginx
+	suto systemctl start varnish
 
 truncate-logs:
 	sudo truncate --size 0 /var/log/nginx/access.log
