@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -113,6 +114,7 @@ func scanTrades(rows *sql.Rows, e error) (trades []*Trade, err error) {
 	}()
 	trades = []*Trade{}
 	for rows.Next() {
+		fmt.Println("1")
 		var v Trade
 		if err = rows.Scan(&v.ID, &v.Amount, &v.Price, &v.CreatedAt); err != nil {
 			return
