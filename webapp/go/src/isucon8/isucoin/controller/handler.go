@@ -35,6 +35,29 @@ var infoUpdateMutex *sync.RWMutex
 var lowestSellOrder *model.Order
 var highestSellOrder *model.Order
 
+var banList map[string]int
+var banMutex *sync.Mutex
+
+func checkBan(bankID string) bool {
+	if banList == nil {
+	}
+	banMutex.Lock()
+	defer banMutex.Unlock()
+	return banList[bankID] >= 5
+}
+
+func putBan(bankID string) {
+	banMutex.Lock()
+	defer banMutex.Unlock()
+	banList[bankID]++
+}
+
+func resetBan(bankID string) {
+	banMutex.Lock()
+	defer banMutex.Unlock()
+	banList[bankID] = 0
+}
+
 func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
@@ -107,10 +130,16 @@ func (h *Handler) Signin(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		h.handleError(w, errors.New("all parameters are required"), 400)
 		return
 	}
+
+	if checkBan(bankID) {
+		h.handleError(w, errors.New("error: fail"), 403)
+		return
+	}
+
 	user, err := model.UserLogin(h.db, bankID, password)
 	switch {
 	case err == model.ErrUserNotFound:
-		// TODO: 失敗が多いときに403を返すBanの仕様に対応
+		putBan(bankID)
 		h.handleError(w, err, 404)
 	case err != nil:
 		h.handleError(w, err, 500)
@@ -125,6 +154,7 @@ func (h *Handler) Signin(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 			h.handleError(w, err, 500)
 			return
 		}
+		resetBan(bankID)
 		h.handleSuccess(w, user)
 	}
 }
