@@ -220,7 +220,11 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 			h.handleError(w, err, 500)
 			return
 		}
-		fmt.Println(orders)
+		fmt.Println(orders[0])
+		fmt.Println(orders[0].TradeID)
+		fmt.Println(orders[0].Trade)
+		fmt.Println(orders[0].UserID)
+		fmt.Println(orders[0].User)
 
 		res["traded_orders"] = orders
 	}
