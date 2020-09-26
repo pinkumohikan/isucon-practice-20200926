@@ -60,6 +60,8 @@ func resetBan(bankID string) {
 func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
+	banList = make(map[string]int)
+	banMutex = &sync.Mutex{}
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	h := &Handler{
 		db:    db,
@@ -71,6 +73,8 @@ func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Ha
 }
 
 func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	banList = make(map[string]int)
+	banMutex = &sync.Mutex{}
 	model.InitializeCandleStack(&BaseTime)
 	infoUpdateMutex.Lock()
 	defer infoUpdateMutex.Unlock()
@@ -106,6 +110,12 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		h.handleError(w, errors.New("all parameters are required"), 400)
 		return
 	}
+
+	if checkBan(bankID) {
+		h.handleError(w, errors.New("error: fail"), 403)
+		return
+	}
+
 	err := h.txScope(func(tx *sql.Tx) error {
 		return model.UserSignup(tx, name, bankID, password)
 	})
@@ -118,6 +128,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	case err != nil:
 		h.handleError(w, err, 500)
 	default:
+		resetBan(bankID)
 		h.handleSuccess(w, struct{}{})
 	}
 }
