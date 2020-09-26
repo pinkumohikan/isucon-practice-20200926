@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"isucon8/isucoin/model"
@@ -28,18 +30,27 @@ type Handler struct {
 	tradeChanceChan chan bool
 }
 
+var infoUpdateMutex *sync.RWMutex
+var lowestSellOrder *model.Order
+var highestSellOrder *model.Order
+
 func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
-	return &Handler{
+	h := &Handler{
 		db:    db,
 		store: store,
 		tradeChanceChan: tradeChanceChan,
 	}
+	infoUpdateMutex = &sync.RWMutex{}
+	return h
 }
 
 func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	model.InitializeCandleStack(&BaseTime)
+	infoUpdateMutex.Lock()
+	defer infoUpdateMutex.Unlock()
 	err := h.txScope(func(tx *sql.Tx) error {
 		if err := model.InitBenchmark(tx); err != nil {
 			return err
@@ -56,6 +67,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		}
 		return nil
 	})
+	model.UpdateCandlestickData(h.db)
 	if err != nil {
 		h.handleError(w, err, 500)
 	} else {
@@ -172,54 +184,34 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		res["traded_orders"] = orders
 	}
 
+	infoUpdateMutex.Lock()
+	defer infoUpdateMutex.Unlock()
+
 	bySecTime := BaseTime.Add(-300 * time.Second)
 	if lt.After(bySecTime) {
 		bySecTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), lt.Second(), 0, lt.Location())
 	}
-	res["chart_by_sec"], err = model.GetCandlestickData(h.db, bySecTime, "%Y-%m-%d %H:%i:%s")
-	if err != nil {
-		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by sec"), 500)
-		return
-	}
+	res["chart_by_sec"] = model.GetCandlestickDataSec(bySecTime)
 
 	byMinTime := BaseTime.Add(-300 * time.Minute)
 	if lt.After(byMinTime) {
 		byMinTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), 0, 0, lt.Location())
 	}
-	res["chart_by_min"], err = model.GetCandlestickData(h.db, byMinTime, "%Y-%m-%d %H:%i:00")
-	if err != nil {
-		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by min"), 500)
-		return
-	}
+	res["chart_by_min"] = model.GetCandlestickDataMin(byMinTime)
 
 	byHourTime := BaseTime.Add(-48 * time.Hour)
 	if lt.After(byHourTime) {
 		byHourTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), 0, 0, 0, lt.Location())
 	}
-	res["chart_by_hour"], err = model.GetCandlestickData(h.db, byHourTime, "%Y-%m-%d %H:00:00")
-	if err != nil {
-		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by hour"), 500)
-		return
-	}
+	res["chart_by_hour"] = model.GetCandlestickDataHour(byHourTime)
 
 	lowestSellOrder, err := model.GetLowestSellOrder(h.db)
-	switch {
-	case err == sql.ErrNoRows:
-	case err != nil:
-		h.handleError(w, errors.Wrap(err, "model.GetLowestSellOrder"), 500)
-		return
-	default:
+
+	if lowestSellOrder != nil {
 		res["lowest_sell_price"] = lowestSellOrder.Price
 	}
-
-	highestBuyOrder, err := model.GetHighestBuyOrder(h.db)
-	switch {
-	case err == sql.ErrNoRows:
-	case err != nil:
-		h.handleError(w, errors.Wrap(err, "model.GetHighestBuyOrder"), 500)
-		return
-	default:
-		res["highest_buy_price"] = highestBuyOrder.Price
+	if highestSellOrder != nil {
+		res["highest_buy_price"] = highestSellOrder.Price
 	}
 	// TODO: trueにするとシェアボタンが有効になるが、アクセスが増えてヤバイので一旦falseにしておく
 	res["enable_share"] = false
@@ -388,4 +380,34 @@ func (h *Handler) txScope(f func(*sql.Tx) error) (err error) {
 	}()
 	err = f(tx)
 	return
+}
+
+func (h *Handler)InfoUpdate() {
+	t := time.NewTicker(250*time.Microsecond)
+	for {
+		select {
+			case <-t.C:
+				func() {
+					infoUpdateMutex.Lock()
+					defer infoUpdateMutex.Unlock()
+					if err := model.UpdateCandlestickData(h.db); err != nil {
+						fmt.Errorf("%s\n", err)
+					}
+					var err error
+					lowestSellOrder, err = model.GetLowestSellOrder(h.db)
+					if err == sql.ErrNoRows {
+						lowestSellOrder = nil
+					} else if err != nil {
+						fmt.Errorf("errorLowestsellOrder: %s", err)
+
+					}
+					highestSellOrder, err = model.GetHighestBuyOrder(h.db)
+					if err == sql.ErrNoRows {
+						highestSellOrder = nil
+					} else if err != nil {
+						fmt.Errorf("errorHigestsellOrder: %s", err)
+					}
+				}()
+		}
+	}
 }

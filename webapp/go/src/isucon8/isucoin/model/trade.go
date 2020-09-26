@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
 	"isucon8/isubank"
 	"log"
 	"time"
@@ -27,6 +26,12 @@ type CandlestickData struct {
 	Low   int64     `json:"low"`
 }
 
+var candlestickDataSec []*CandlestickData
+var candlestickDataMin []*CandlestickData
+var candlestickDataHour []*CandlestickData
+var candlestickDataLastIndex int64
+var candlestickDataBaseTime *time.Time
+
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
 	return scanTrade(d.Query("SELECT * FROM trade WHERE id = ?", id))
 }
@@ -35,25 +40,89 @@ func GetLatestTrade(d QueryExecutor) (*Trade, error) {
 	return scanTrade(d.Query("SELECT * FROM trade ORDER BY id DESC LIMIT 1"))
 }
 
-func GetCandlestickData(d QueryExecutor, mt time.Time, tf string) ([]*CandlestickData, error) {
-	query := fmt.Sprintf(`
-		SELECT m.t, a.price, b.price, m.h, m.l
-		FROM (
-			SELECT
-				STR_TO_DATE(DATE_FORMAT(created_at, '%s'), '%s') AS t,
-				MIN(id) AS min_id,
-				MAX(id) AS max_id,
-				MAX(price) AS h,
-				MIN(price) AS l
+func InitializeCandleStack(baseTime *time.Time) {
+	candlestickDataSec = make([]*CandlestickData, 0, 1000)
+	candlestickDataMin = make([]*CandlestickData, 0, 1000)
+	candlestickDataHour = make([]*CandlestickData, 0, 1000)
+	candlestickDataLastIndex = 0
+	candlestickDataBaseTime = baseTime
+}
+
+func pushCandlestick(data *[]*CandlestickData, ut int64, price int64) {
+	if len(*data) == 0 || (*data)[len(*data)-1].Time.Unix() != ut {
+		// Create
+		target := &CandlestickData{}
+		target.High = price
+		target.Low = price
+		target.Close = price
+		target.Open = price
+		target.Time = time.Unix(ut,0)
+		*data = append(*data, target)
+		return
+	}
+
+	target := (*data)[len(*data)-1]
+	target.Close = price
+	if target.High < price {
+		target.High = price
+	}
+	if target.Low > price {
+		target.Low = price
+	}
+}
+
+func UpdateCandlestickData(d QueryExecutor) error {
+	query := `
+			SELECT id, UNIX_TIMESTAMP(STR_TO_DATE(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s'), '%Y-%m-%d %H:%i:%s')) as t, price
 			FROM trade
-			WHERE created_at >= ?
-			GROUP BY t
-		) m
-		JOIN trade a ON a.id = m.min_id
-		JOIN trade b ON b.id = m.max_id
-		ORDER BY m.t
-	`, tf, "%Y-%m-%d %H:%i:%s")
-	return scanCandlestickDatas(d.Query(query, mt))
+			WHERE created_at >= ? AND id > ?
+			ORDER BY id
+	`
+	rows, err := d.Query(query, candlestickDataBaseTime.Add(-48*time.Hour), candlestickDataLastIndex)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ut int64
+		var price int64
+		var id int64
+		if err = rows.Scan(&id, &ut, &price); err != nil {
+			return err
+		}
+		// Update
+		pushCandlestick(&candlestickDataSec, ut, price)
+		pushCandlestick(&candlestickDataMin, ut/60*60, price)
+		pushCandlestick(&candlestickDataHour, ut/3600*3600, price)
+		candlestickDataLastIndex = id
+	}
+	return nil
+}
+
+func GetCandlestickDataSec(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataSec, t.Unix())
+}
+
+func GetCandlestickDataMin(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataMin, t.Unix())
+}
+
+func GetCandlestickDataHour(t time.Time) []*CandlestickData {
+	return getCandlestickData(candlestickDataHour, t.Unix())
+}
+
+func getCandlestickData(data []*CandlestickData, ut int64) []*CandlestickData {
+	low := 0
+	high := len(data)
+	for low+1 < high {
+		mid := (low + high) / 2
+		if data[mid].Time.Unix() < ut {
+			low = mid
+		} else {
+			high = mid
+		}
+	}
+	return append(make([]*CandlestickData, 0), data[low:]...)
 }
 
 func HasTradeChanceByOrder(d QueryExecutor, orderID int64) (bool, error) {
