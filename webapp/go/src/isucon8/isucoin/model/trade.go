@@ -125,13 +125,6 @@ func getCandlestickData(data []*CandlestickData, ut int64) []*CandlestickData {
 	return append(make([]*CandlestickData, 0), data[low:]...)
 }
 
-func GetCandlestickData(d QueryExecutor, mt time.Time, tf string) ([]*CandlestickData, error) {
-	if err := UpdateCandlestickData(d); err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
 func HasTradeChanceByOrder(d QueryExecutor, orderID int64) (bool, error) {
 	order, err := GetOrderByID(d, orderID)
 	if err != nil {
