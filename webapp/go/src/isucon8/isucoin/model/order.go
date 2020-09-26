@@ -150,9 +150,11 @@ func DeleteOrder(tx *sql.Tx, userID, orderID int64, reason string) error {
 }
 
 func cancelOrder(d QueryExecutor, order *Order, reason string) error {
-	if _, err := d.Exec(`UPDATE orders SET closed_at = NOW(6) WHERE id = ?`, order.ID); err != nil {
+	if res, err := d.Exec(`UPDATE orders SET closed_at = NOW(6) WHERE id = ?`, order.ID); err != nil {
 		return errors.Wrap(err, "update orders for cancel")
 	}
+	// トレードがキャンセルになったときメモリのキャンドルデータを更新
+	updateSecCandles(d, res.closed_at, "%Y-%m-%d %H:%i:%s")
 	sendLog(d, order.Type+".delete", map[string]interface{}{
 		"order_id": order.ID,
 		"user_id":  order.UserID,
