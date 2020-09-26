@@ -58,10 +58,13 @@ func main() {
 	}
 	store := sessions.NewCookieStore([]byte(SessionSecret))
 
-	const LogSendInterval = 1000 / 20 * time.Millisecond
+	const LogSendInterval = 1000 / 20
 	go func (logs <- chan model.LogPayload) {
 		for l := range logs {
 			log.Println("ログ送るぞーーー！")
+
+			s := time.Now().UnixNano() / 1000
+
 			logger, err := model.Logger(db)
 			if err != nil {
 				log.Printf("[WARN] new logger failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
@@ -71,7 +74,13 @@ func main() {
 			if err != nil {
 				log.Printf("[WARN] logger send failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
 			}
-			time.Sleep(LogSendInterval)
+
+			e := time.Now().UnixNano() / 1000
+			elapsed := e - s
+			interval := LogSendInterval - elapsed
+			if interval > 0 {
+				time.Sleep(LogSendInterval * time.Millisecond)
+			}
 		}
 	}(model.SendLogChan)
 
