@@ -60,19 +60,17 @@ func main() {
 	store := sessions.NewCookieStore([]byte(SessionSecret))
 
 	go func () {
-		t := time.NewTicker(time.Millisecond * 500)
+		t := time.NewTicker(time.Millisecond * 1000)
 		for _ = range t.C {
 			if len(model.BufferedLogs) > 0 {
-				model.BufferedLogsMutex.Lock()
-
-				log.Printf("ログを %d件 まとめて送信中...", len(model.BufferedLogs))
 				logger, err := model.Logger(db)
 				if err != nil {
 					log.Printf("Log sending error. err=%s", err)
-					model.BufferedLogsMutex.Unlock()
 					return
 				}
 
+				model.BufferedLogsMutex.Lock()
+				log.Printf("ログを %d件 まとめて送信中...", len(model.BufferedLogs))
 				var logs []isulogger.Log
 				for _, l := range model.BufferedLogs {
 					logs = append(logs, isulogger.Log{
@@ -81,14 +79,12 @@ func main() {
 						Data: l.Value,
 					})
 				}
-				err = logger.SendBulk(logs)
-				if err != nil {
-					model.BufferedLogsMutex.Unlock()
-					log.Printf("Log sending error. err=%s", err)
-				}
-
 				model.BufferedLogs = nil
 				model.BufferedLogsMutex.Unlock()
+
+				if err := logger.SendBulk(logs); err != nil {
+					log.Printf("Log sending error. err=%s", err)
+				}
 			}
 		}
 	}()
