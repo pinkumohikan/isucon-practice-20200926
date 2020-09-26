@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"fmt"
 	"isucon8/isubank"
 	"strconv"
 	"time"
@@ -85,12 +84,9 @@ func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
 			uTrades[t.ID] = t
 		}
 		for _, o := range orders {
+			o.User = user
 			if uTrades[o.TradeID] != nil {
-				fmt.Println(o.TradeID)
-				fmt.Println(uTrades[o.TradeID])
-				fmt.Println(user)
 				o.Trade = uTrades[o.TradeID]
-				o.User = user
 			}
 		}
 	}
