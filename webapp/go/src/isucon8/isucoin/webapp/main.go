@@ -61,8 +61,6 @@ func main() {
 	const LogSendInterval = 1000 / 20
 	go func (logs <- chan model.LogPayload) {
 		for l := range logs {
-			log.Println("ログ送るぞーーー！")
-
 			s := time.Now().UnixNano() / 1000
 
 			logger, err := model.Logger(db)
