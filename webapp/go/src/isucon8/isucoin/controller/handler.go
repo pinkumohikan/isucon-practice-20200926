@@ -174,7 +174,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	if lt.After(bySecTime) {
 		bySecTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), lt.Second(), 0, lt.Location())
 	}
-	res["chart_by_sec"], err = model.GetCandlestickData(h.db, bySecTime, "%Y-%m-%d %H:%i:%s")
+	res["chart_by_sec"], err = SecCandles
 	if err != nil {
 		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by sec"), 500)
 		return

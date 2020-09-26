@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"isucon8/isubank"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+)
+
+var (
+	SecCandles    = []*CandlestickData
 )
 
 //go:generate scanner
@@ -56,6 +61,28 @@ func GetCandlestickData(d QueryExecutor, mt time.Time, tf string) ([]*Candlestic
 	return scanCandlestickDatas(d.Query(query, mt))
 }
 
+// メモリのキャンドルを更新する関数
+func updateSecCandles(d QueryExecutor, mt time.Time, tf string) ([]*CandlestickData, error) {
+	query := fmt.Sprintf(`
+		SELECT m.t, a.price, b.price, m.h, m.l
+		FROM (
+			SELECT
+				STR_TO_DATE(DATE_FORMAT(created_at, '%s'), '%s') AS t,
+				MIN(id) AS min_id,
+				MAX(id) AS max_id,
+				MAX(price) AS h,
+				MIN(price) AS l
+			FROM trade
+			WHERE created_at >= ?
+			GROUP BY t
+		) m
+		JOIN trade a ON a.id = m.min_id
+		JOIN trade b ON b.id = m.max_id
+		ORDER BY m.t
+	`, tf, "%Y-%m-%d %H:%i:%s")
+	SecCandles = scanCandlestickDatas(d.Query(query, mt))
+	return
+}
 func HasTradeChanceByOrder(d QueryExecutor, orderID int64) (bool, error) {
 	order, err := GetOrderByID(d, orderID)
 	if err != nil {
@@ -137,6 +164,9 @@ func commitReservedOrder(tx *sql.Tx, order *Order, targets []*Order, reserves []
 		"price":    order.Price,
 		"amount":   order.Amount,
 	})
+	// トレード成功時メモリのキャンドルデータも更新
+	updateSecCandles(tx, res.created_at,"%Y-%m-%d %H:%i:%s")
+
 	for _, o := range append(targets, order) {
 		if _, err = tx.Exec(`UPDATE orders SET trade_id = ?, closed_at = NOW(6) WHERE id = ?`, tradeID, o.ID); err != nil {
 			return errors.Wrap(err, "update order for trade")
