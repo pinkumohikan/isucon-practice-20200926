@@ -65,7 +65,7 @@ func main() {
 			if len(model.BufferedLogs) > 0 {
 				model.BufferedLogsMutex.Lock()
 
-				log.Println("ログをまとめて送るぞー")
+				log.Printf("ログを %d件 まとめて送信中...", len(model.BufferedLogs))
 				logger, err := model.Logger(db)
 				if err != nil {
 					log.Printf("Log sending error. err=%s", err)
