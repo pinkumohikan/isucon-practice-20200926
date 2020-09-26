@@ -64,7 +64,6 @@ func main() {
 		for _ = range t.C {
 			if len(model.BufferedLogs) > 0 {
 				model.BufferedLogsMutex.Lock()
-				model.BufferedLogsMutex.Unlock()
 
 				log.Println("ログをまとめて送るぞー")
 				logger, err := model.Logger(db)
