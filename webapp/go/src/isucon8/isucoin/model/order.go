@@ -70,6 +70,7 @@ func GetHighestBuyOrder(d QueryExecutor) (*Order, error) {
 
 func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
 	ids := getUniqueIds(orders)
+	fmt.Println(ids)
 	var uTrades map[int64]*Trade
 	if len(ids) > 0 {
 		user, err := GetUserByID(d, orders[0].UserID)
@@ -77,7 +78,7 @@ func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
 			return errors.Wrapf(err, "GetUserByID failed. id")
 		}
 		trades, err := GetTradeByIDs(d, ids)
-		fmt.Print(trades)
+		fmt.Println(trades)
 		if err != nil {
 			return errors.Wrapf(err, "GetTradeByID failed. id")
 		}
