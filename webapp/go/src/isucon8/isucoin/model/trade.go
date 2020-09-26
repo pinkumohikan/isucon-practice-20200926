@@ -125,43 +125,6 @@ func getCandlestickData(data []*CandlestickData, ut int64) []*CandlestickData {
 	return append(make([]*CandlestickData, 0), data[low:]...)
 }
 
-func HasTradeChanceByOrder(d QueryExecutor, orderID int64) (bool, error) {
-	order, err := GetOrderByID(d, orderID)
-	if err != nil {
-		return false, err
-	}
-
-	lowest, err := GetLowestSellOrder(d)
-	switch {
-	case err == sql.ErrNoRows:
-		return false, nil
-	case err != nil:
-		return false, errors.Wrap(err, "GetLowestSellOrder")
-	}
-
-	highest, err := GetHighestBuyOrder(d)
-	switch {
-	case err == sql.ErrNoRows:
-		return false, nil
-	case err != nil:
-		return false, errors.Wrap(err, "GetHighestBuyOrder")
-	}
-
-	switch order.Type {
-	case OrderTypeBuy:
-		if lowest.Price <= order.Price {
-			return true, nil
-		}
-	case OrderTypeSell:
-		if order.Price <= highest.Price {
-			return true, nil
-		}
-	default:
-		return false, errors.Errorf("other type [%s]", order.Type)
-	}
-	return false, nil
-}
-
 func reserveOrder(d QueryExecutor, order *Order, price int64) (int64, error) {
 	bank, err := Isubank(d)
 	if err != nil {

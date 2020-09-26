@@ -92,18 +92,16 @@ func main() {
 		}
 	}()
 
-	tradeChanceChan := make(chan bool, 9999)
-	const TradeInterval = 10 * time.Millisecond
-	go func (chances <-chan bool) {
-		for _ = range chances {
+	go func () {
+		t := time.NewTicker(time.Millisecond * 50)
+		for _ = range t.C {
 			if err := model.RunTrade(db); err != nil {
 				log.Printf("err: %s", err)
 			}
-			time.Sleep(TradeInterval)
 		}
-	}(tradeChanceChan)
+	}()
 
-	h := controller.NewHandler(db, store, tradeChanceChan)
+	h := controller.NewHandler(db, store)
 	model.InitializeCandleStack(&controller.BaseTime)
 	go h.InfoUpdate()
 	router := httprouter.New()
