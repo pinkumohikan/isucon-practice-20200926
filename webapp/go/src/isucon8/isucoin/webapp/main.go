@@ -48,6 +48,7 @@ func main() {
 		dbpass = getEnv("DB_PASSWORD", "")
 		dbname = getEnv("DB_NAME", "isucoin")
 		public = getEnv("PUBLIC_DIR", "public")
+		serverType = getEnv("SERVER_TYPE", "app")
 	)
 
 	dbusrpass := dbuser
@@ -105,7 +106,10 @@ func main() {
 
 	h := controller.NewHandler(db, store, tradeChanceChan)
 	model.InitializeCandleStack(&controller.BaseTime)
-	go h.InfoUpdate()
+	if serverType == "app" {
+		go h.InfoUpdate()
+	}
+
 	router := httprouter.New()
 	router.POST("/initialize", h.Initialize)
 	router.POST("/signup", h.Signup)
