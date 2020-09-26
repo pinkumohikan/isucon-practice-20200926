@@ -101,7 +101,8 @@ func main() {
 	}(tradeChanceChan)
 
 	h := controller.NewHandler(db, store, tradeChanceChan)
-
+	model.InitializeCandleStack(&controller.BaseTime)
+	go h.InfoUpdate()
 	router := httprouter.New()
 	router.POST("/initialize", h.Initialize)
 	router.POST("/signup", h.Signup)

@@ -38,14 +38,12 @@ func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Ha
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
-	model.InitializeCandleStack(&BaseTime)
 	h := &Handler{
 		db:    db,
 		store: store,
 		tradeChanceChan: tradeChanceChan,
 	}
 	infoUpdateMutex = &sync.RWMutex{}
-	go h.InfoUpdate()
 	return h
 }
 
