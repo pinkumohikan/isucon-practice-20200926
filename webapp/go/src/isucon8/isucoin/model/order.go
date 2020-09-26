@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"isucon8/isubank"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -108,14 +107,14 @@ func FetchOrderRelation(d QueryExecutor, order *Order) error {
 	return nil
 }
 
-func getUniqueIds(items []*Order) []string {
+func getUniqueIds(items []*Order) []interface{} {
 	idUnique := make(map[int64]struct{})
-	var ids []string
+	var ids []interface{}
 
 	for _, i := range items {
 		id := i.TradeID
 		if _, ok := idUnique[id]; !ok {
-			ids = append(ids, strconv.FormatInt(id, 10))
+			ids = append(ids, id)
 			idUnique[id] = struct{}{}
 		}
 	}

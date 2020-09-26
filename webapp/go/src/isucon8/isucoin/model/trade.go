@@ -33,8 +33,8 @@ var candlestickDataHour []*CandlestickData
 var candlestickDataLastIndex int64
 var candlestickDataBaseTime *time.Time
 
-func GetTradeByIDs(d QueryExecutor, ids []string) ([]*Trade, error) {
-	return scanTrades(d.Query("SELECT * FROM trade WHERE id IN (?" + strings.Repeat(",?", len(ids)-1) + ")", ids))
+func GetTradeByIDs(d QueryExecutor, ids []interface{}) ([]*Trade, error) {
+	return scanTrades(d.Query("SELECT * FROM trade WHERE id IN (?" + strings.Repeat(",?", len(ids)-1) + ")", ids...))
 }
 
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
