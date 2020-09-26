@@ -33,9 +33,35 @@ var infoUpdateMutex *sync.RWMutex
 var lowestSellOrder *model.Order
 var highestSellOrder *model.Order
 
+var banList map[string]int
+var banMutex *sync.RWMutex
+
+func checkBan(bankID string) bool {
+	if banList == nil {
+		return false
+	}
+	banMutex.RLock()
+	defer banMutex.RUnlock()
+	return banList[bankID] >= 5
+}
+
+func putBan(bankID string) {
+	banMutex.Lock()
+	defer banMutex.Unlock()
+	banList[bankID]++
+}
+
+func resetBan(bankID string) {
+	banMutex.Lock()
+	defer banMutex.Unlock()
+	banList[bankID] = 0
+}
+
 func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
+	banList = make(map[string]int)
+	banMutex = &sync.RWMutex{}
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	h := &Handler{
 		db:    db,
@@ -46,6 +72,8 @@ func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 }
 
 func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	banList = make(map[string]int)
+	banMutex = &sync.RWMutex{}
 	model.InitializeCandleStack(&BaseTime)
 	infoUpdateMutex.Lock()
 	defer infoUpdateMutex.Unlock()
@@ -81,6 +109,12 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		h.handleError(w, errors.New("all parameters are required"), 400)
 		return
 	}
+
+	if checkBan(bankID) {
+		h.handleError(w, errors.New("error: fail"), 403)
+		return
+	}
+
 	err := h.txScope(func(tx *sql.Tx) error {
 		return model.UserSignup(tx, name, bankID, password)
 	})
@@ -93,6 +127,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	case err != nil:
 		h.handleError(w, err, 500)
 	default:
+		resetBan(bankID)
 		h.handleSuccess(w, struct{}{})
 	}
 }
@@ -104,10 +139,16 @@ func (h *Handler) Signin(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		h.handleError(w, errors.New("all parameters are required"), 400)
 		return
 	}
+
+	if checkBan(bankID) {
+		h.handleError(w, errors.New("error: fail"), 403)
+		return
+	}
+
 	user, err := model.UserLogin(h.db, bankID, password)
 	switch {
 	case err == model.ErrUserNotFound:
-		// TODO: 失敗が多いときに403を返すBanの仕様に対応
+		putBan(bankID)
 		h.handleError(w, err, 404)
 	case err != nil:
 		h.handleError(w, err, 500)
@@ -122,6 +163,7 @@ func (h *Handler) Signin(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 			h.handleError(w, err, 500)
 			return
 		}
+		resetBan(bankID)
 		h.handleSuccess(w, user)
 	}
 }
