@@ -30,11 +30,65 @@ type CandlestickData struct {
 var candlestickDataSec []*CandlestickData
 var candlestickDataMin []*CandlestickData
 var candlestickDataHour []*CandlestickData
+var candlestickDataLastIndex int64
+var candlestickDataBaseTime *time.Time
 
-func InitializeCandleStack() {
+func InitializeCandleStack(baseTime *time.Time) {
 	candlestickDataSec = make([]*CandlestickData, 0, 1000)
 	candlestickDataMin = make([]*CandlestickData, 0, 1000)
 	candlestickDataHour = make([]*CandlestickData, 0, 1000)
+	candlestickDataLastIndex = 0
+	candlestickDataBaseTime = baseTime
+}
+
+func pushCandlestick(data *[]*CandlestickData, ut int64, price int64) {
+	if len(*data) == 0 || (*data)[len(*data)-1].Time.Unix() != ut {
+		// Create
+		target := &CandlestickData{}
+		target.High = price
+		target.Low = price
+		target.Close = price
+		target.Open = price
+		target.Time = time.Unix(ut,0)
+		*data = append(*data, target)
+		return
+	}
+
+	target := (*data)[len(*data)-1]
+	target.Close = price
+	if target.High < price {
+		target.High = price
+	}
+	if target.Low > price {
+		target.Low = price
+	}
+}
+
+func UpdateCandlestickData(d QueryExecutor) error {
+	query := `
+			SELECT UNIX_TIMESTAMP(STR_TO_DATE(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s'), '%Y-%m-%d %H:%i:%s')) as t, price,
+			FROM trade
+			WHERE created_at >= ? AND id > ?
+			ORDER BY id
+	`
+	rows, err := d.Query(query, candlestickDataBaseTime.Add(-48*time.Hour), candlestickDataLastIndex)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ut int64
+		var price int64
+		if err = rows.Scan(&ut, &price); err != nil {
+			return err
+		}
+		// Update
+		pushCandlestick(&candlestickDataSec, ut, price)
+		pushCandlestick(&candlestickDataMin, ut/60*60, price)
+		pushCandlestick(&candlestickDataHour, ut/3600*3600, price)
+		candlestickDataLastIndex = id
+	}
+	return nil
 }
 
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
