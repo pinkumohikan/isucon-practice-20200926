@@ -31,6 +31,7 @@ kataribe:
 	cd ../ && sudo cat /var/log/nginx/access.log | ./kataribe
 
 log: 
-	ssh isucon-app4 sudo mv /var/log/mysql/slow.log ./
+	ssh isucon-app4 sudo cp /var/log/mysql/slow.log ./
 	ssh isucon-app4 sudo chmod 777 ./slow.log
 	scp isucon-app4:~/slow.log ../log/
+	ssh isucon-app4 rm ./slow.log
