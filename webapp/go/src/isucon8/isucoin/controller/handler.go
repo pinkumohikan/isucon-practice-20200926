@@ -184,7 +184,7 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 
 	infoUpdateMutex.Lock()
 	defer infoUpdateMutex.Unlock()
-	
+
 	bySecTime := BaseTime.Add(-300 * time.Second)
 	if lt.After(bySecTime) {
 		bySecTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), lt.Second(), 0, lt.Location())
@@ -394,7 +394,7 @@ func (h *Handler) txScope(f func(*sql.Tx) error) (err error) {
 	return
 }
 
-func InfoUpdate() {
+func (h *Handler)InfoUpdate() {
 	t := time.NewTicker(250*time.Microsecond)
 	for {
 		select {
