@@ -61,6 +61,7 @@ func main() {
 	const LogSendInterval = 1000 / 20 * time.Millisecond
 	go func (logs <- chan model.LogPayload) {
 		for l := range logs {
+			log.Println("ログ送るぞーーー！")
 			logger, err := model.Logger(db)
 			if err != nil {
 				log.Printf("[WARN] new logger failed. tag: %s, v: %v, err:%s", l.Tag, l.Value, err)
