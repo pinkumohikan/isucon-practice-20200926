@@ -30,6 +30,8 @@ type Handler struct {
 }
 
 var infoUpdateMutex *sync.RWMutex
+var lowestSellOrder *model.Order
+var highestSellOrder *model.Order
 
 func NewHandler(db *sql.DB, store sessions.Store) *Handler {
 	// ISUCON用初期データの基準時間です
@@ -204,23 +206,12 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	res["chart_by_hour"] = model.GetCandlestickDataHour(byHourTime)
 
 	lowestSellOrder, err := model.GetLowestSellOrder(h.db)
-	switch {
-	case err == sql.ErrNoRows:
-	case err != nil:
-		h.handleError(w, errors.Wrap(err, "model.GetLowestSellOrder"), 500)
-		return
-	default:
+
+	if lowestSellOrder != nil {
 		res["lowest_sell_price"] = lowestSellOrder.Price
 	}
-
-	highestBuyOrder, err := model.GetHighestBuyOrder(h.db)
-	switch {
-	case err == sql.ErrNoRows:
-	case err != nil:
-		h.handleError(w, errors.Wrap(err, "model.GetHighestBuyOrder"), 500)
-		return
-	default:
-		res["highest_buy_price"] = highestBuyOrder.Price
+	if highestSellOrder != nil {
+		res["highest_buy_price"] = highestSellOrder.Price
 	}
 	// TODO: trueにするとシェアボタンが有効になるが、アクセスが増えてヤバイので一旦falseにしておく
 	res["enable_share"] = false
@@ -404,6 +395,20 @@ func (h *Handler)InfoUpdate() {
 					defer infoUpdateMutex.Unlock()
 					if err := model.UpdateCandlestickData(h.db); err != nil {
 						fmt.Errorf("%s\n", err)
+					}
+					var err error
+					lowestSellOrder, err = model.GetLowestSellOrder(h.db)
+					if err == sql.ErrNoRows {
+						lowestSellOrder = nil
+					} else if err != nil {
+						fmt.Errorf("errorLowestsellOrder: %s", err)
+
+					}
+					highestSellOrder, err = model.GetHighestBuyOrder(h.db)
+					if err == sql.ErrNoRows {
+						highestSellOrder = nil
+					} else if err != nil {
+						fmt.Errorf("errorHigestsellOrder: %s", err)
 					}
 				}()
 		}
