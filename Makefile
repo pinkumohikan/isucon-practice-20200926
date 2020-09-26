@@ -1,6 +1,6 @@
 .PHONY: gogo
 
-gogo: stop-services build truncate-logs start-services
+gogo: stop-services build distribution-app truncate-logs start-services
 
 build:
 	make -C webapp/go clean
