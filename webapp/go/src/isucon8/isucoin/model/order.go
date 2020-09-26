@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"isucon8/isubank"
 	"strconv"
 	"time"
@@ -76,6 +77,7 @@ func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
 			return errors.Wrapf(err, "GetUserByID failed. id")
 		}
 		trades, err := GetTradeByIDs(d, ids)
+		fmt.Print(trades)
 		if err != nil {
 			return errors.Wrapf(err, "GetTradeByID failed. id")
 		}
