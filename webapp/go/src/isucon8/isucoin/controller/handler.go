@@ -25,15 +25,17 @@ var BaseTime time.Time
 type Handler struct {
 	db    *sql.DB
 	store sessions.Store
+	tradeChanceChan chan bool
 }
 
-func NewHandler(db *sql.DB, store sessions.Store) *Handler {
+func NewHandler(db *sql.DB, store sessions.Store, tradeChanceChan chan bool) *Handler {
 	// ISUCON用初期データの基準時間です
 	// この時間以降のデータはInitializeで削除されます
 	BaseTime = time.Date(2018, 10, 16, 10, 0, 0, 0, time.Local)
 	return &Handler{
 		db:    db,
 		store: store,
+		tradeChanceChan: tradeChanceChan,
 	}
 }
 
@@ -250,10 +252,7 @@ func (h *Handler) AddOrders(w http.ResponseWriter, r *http.Request, _ httprouter
 			return
 		}
 		if tradeChance {
-			if err := model.RunTrade(h.db); err != nil {
-				// トレードに失敗してもエラーにはしない
-				log.Printf("runTrade err:%s", err)
-			}
+			h.tradeChanceChan <- true
 		}
 		h.handleSuccess(w, map[string]interface{}{
 			"id": order.ID,

@@ -81,8 +81,19 @@ func main() {
 			}
 		}
 	}(model.SendLogChan)
+	tradeChanceChan := make(chan bool)
+	const TradeInterval = 10 * time.Millisecond
 
-	h := controller.NewHandler(db, store)
+	go func (chances <-chan bool) {
+		for _ = range chances {
+			if err := model.RunTrade(db); err != nil {
+				log.Printf("err: %s", err)
+			}
+			time.Sleep(TradeInterval)
+		}
+	}(tradeChanceChan)
+
+	h := controller.NewHandler(db, store, tradeChanceChan)
 
 	router := httprouter.New()
 	router.POST("/initialize", h.Initialize)

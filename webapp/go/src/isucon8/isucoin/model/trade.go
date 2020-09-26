@@ -284,8 +284,6 @@ func RunTrade(db *sql.DB) error {
 		}()
 		switch err {
 		case nil:
-			// トレード成立したため次の取引を行う
-			return RunTrade(db)
 		case ErrNoOrderForTrade, ErrOrderAlreadyClosed:
 			// 注文個数の多い方で成立しなかったので少ない方で試す
 			continue
