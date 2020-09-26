@@ -72,13 +72,13 @@ func FetchOrdersRelation(d QueryExecutor, orders []*Order) error {
 	ids := getUniqueIds(orders)
 	var uTrades map[int64]*Trade
 	if len(ids) > 0 {
-		fmt.Print("ここまで来た1")
 		user, err := GetUserByID(d, orders[0].UserID)
 		if err != nil {
 			return errors.Wrapf(err, "GetUserByID failed. id")
 		}
 		trades, err := GetTradeByIDs(d, ids)
-
+		fmt.Println(len(trades))
+		fmt.Println(trades)
 		if err != nil {
 			return errors.Wrapf(err, "GetTradeByID failed. id")
 		}
