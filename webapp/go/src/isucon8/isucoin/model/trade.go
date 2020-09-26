@@ -181,13 +181,17 @@ func commitReservedOrder(tx *sql.Tx, order *Order, targets []*Order, reserves []
 			"trade_id": tradeID,
 		})
 	}
-	bank, err := Isubank(tx)
-	if err != nil {
-		return errors.Wrap(err, "isubank init failed")
-	}
-	if err = bank.Commit(reserves); err != nil {
-		return errors.Wrap(err, "commit")
-	}
+	func () error {
+		bank, err := Isubank(tx)
+		if err != nil {
+			return errors.Wrap(err, "isubank init failed")
+		}
+		if err = bank.Commit(reserves); err != nil {
+			return errors.Wrap(err, "commit")
+		}
+		return nil
+	}()
+	
 	return nil
 }
 
@@ -264,6 +268,7 @@ func tryTrade(tx *sql.Tx, orderID int64) error {
 	if err = commitReservedOrder(tx, order, targets, reserves); err != nil {
 		return err
 	}
+
 	reserves = reserves[:0]
 	return nil
 }
